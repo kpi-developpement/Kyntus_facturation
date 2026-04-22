@@ -29,11 +29,9 @@ router = APIRouter(prefix="/api/import", tags=["imports"])
 DEBUG_IMPORTS = os.getenv("DEBUG_IMPORTS", "0") == "1"
 
 CLOTURE_CODES = {
-    "ANC", "ABS", "ANN", "RMC", "RRC", "TVC",
-    "REO", "PBC", "PAD", "TSO",
-    "RMF", "MC",
-    "DMS", "DEF", "TKO", "MAJ", "REA",
-    "PDC", "ORT", "ETU",
+    "DMS", "DEF", "RRC", "TSO", "PDC",
+    "DMP", "DMA", "DMC", "DME", "DMI", "DMR", "DMT", "DMX",
+    "TVC", "ETU", "RMC", "RMF", "ORT", "MAJ", "TKO", "REA",
 }
 
 PALIER_NUM_RE = re.compile(r"\bpalier\s*([123])\b", re.IGNORECASE)
@@ -313,23 +311,38 @@ def _find_value_by_header_like(raw_row: dict[str, Any], *contains_all: str) -> s
 def _guess_cloture(h: dict[str, Any]) -> str | None:
     direct = _val(
         h,
-        "code_cloture_code",
-        "code_cloture",
-        "code_intervention",
-        "code_intervenant",
-        "code_interven",
-        "code_interv",
+        "code_cloture_code", "code_cloture", "cloture", "etat_cloture",
+        "code_intervention", "code_intervenant", "code_interven", "code_interv",
     )
-    if not direct:
-        return None
+    if direct:
+        d = direct.strip().upper()
+        if d in CLOTURE_CODES:
+            return d
+        m = re.search(r"\b([A-Z]{3})\b", d)
+        if m and m.group(1) in CLOTURE_CODES:
+            return m.group(1)
 
-    d = direct.strip().upper()
-    if d in CLOTURE_CODES:
-        return d
+    for k, v in h.items():
+        if not v:
+            continue
+        kk = (k or "").lower()
+        if ("clotur" in kk) or ("interven" in kk) or ("clot" in kk):
+            vv = str(v).strip().upper()
+            if vv in CLOTURE_CODES:
+                return vv
+            m = re.search(r"\b([A-Z]{3})\b", vv)
+            if m and m.group(1) in CLOTURE_CODES:
+                return m.group(1)
 
-    m = re.search(r"\b([A-Z]{2,4})\b", d)
-    if m and m.group(1) in CLOTURE_CODES:
-        return m.group(1)
+    for v in h.values():
+        if not v:
+            continue
+        vv = str(v).strip().upper()
+        if vv in CLOTURE_CODES:
+            return vv
+        m = re.search(r"\b([A-Z]{3})\b", vv)
+        if m and m.group(1) in CLOTURE_CODES:
+            return m.group(1)
 
     return None
 
@@ -441,12 +454,12 @@ async def import_praxedo(
                 "equipiers": _val(h, "equipiers"),
                 "nd": _val(h, "nd"),
                 "act_prod": _val(h, "act_prod", "activite_produit", "act_prod_code"),
-                "code_intervenant": _val(h, "code_intervention", "code_intervenant", "code_interven", "code_interv") or cloture,                "cp": _val(h, "cp"),
+                "code_intervenant": _val(h, "code_intervention", "code_intervenant", "code_interven", "code_interv") or cloture,
+                "cp": _val(h, "cp"),
                 "ville_site": _val(h, "ville_site", "ville"),
                 "desc_site": ds,
                 "description": desc,
                 "compte_rendu": compte_rendu,
-"autre": _val(h, "autre", "autres"),
                 "imported_at": now,
             }
 

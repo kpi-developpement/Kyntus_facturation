@@ -25,5 +25,5 @@ class RawPraxedo(Base):
     description = Column(Text)
     compte_rendu = Column(Text)
     csv_extra = Column(Text)
-
+    autre = Column(Text)
     imported_at = Column(TIMESTAMP)

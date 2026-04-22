@@ -102,11 +102,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://10.10.10.50:8100
+        NEXT_PUBLIC_API_URL: http://127.0.0.1:8100
     container_name: kyntus_frontend
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://10.10.10.50:8100
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:8100
       NODE_ENV: development
       PORT: 3000
       HOSTNAME: 0.0.0.0
