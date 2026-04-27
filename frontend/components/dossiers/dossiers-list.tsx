@@ -24,6 +24,31 @@ import OrangeComparisonSection from "./orange-comparison-section";
 import { isAdmin } from "@/lib/auth";
 // ----------------------------------------------------------------
 
+// --- NOUVEAU: Fonction getMotifLabel ---
+const getMotifLabel = (motif?: string | null) => {
+  if (!motif) return null;
+
+  switch (motif) {
+    case "PREVISITE":
+      return "Prévisite";
+    case "GARANTIE_30J":
+      return "Garantie 30j";
+    case "CROISEMENT_INCOMPLET":
+      return "Croisement incomplet";
+    case "ACTPROD_MANQUANT":
+      return "Act/Prod manquant";
+    case "REGLE_MANQUANTE":
+      return "Règle manquante";
+    case "CLOTURE_INVALIDE":
+      return "Clôture invalide";
+    case "NON_FACTURABLE_REGLE":
+      return "Non facturable";
+    default:
+      return motif;
+  }
+};
+// ------------------------------------
+
 const PAGE_SIZE = 300;
 
 type BadgeKind =
@@ -66,6 +91,64 @@ function Chip({ txt }: { txt: string }) {
     <span className="inline-flex items-center rounded-full border bg-white px-2 py-1 text-xs font-medium text-gray-700">
       {txt}
     </span>
+  );
+}
+
+// Nouveau composant pour le statut final avec motif
+function StatusFinalCell({ dossier }: { dossier: DossierFacturable }) {
+  const sf = dossier.statut_final ?? "NON_FACTURABLE";
+  const motif = getMotifLabel(dossier.motif_verification);
+
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          padding: "4px 8px",
+          borderRadius: "8px",
+          fontSize: "12px",
+          fontWeight: 600,
+          background:
+            sf === "FACTURABLE"
+              ? "#dcfce7"
+              : sf === "NON_FACTURABLE"
+              ? "#fee2e2"
+              : "#fef3c7",
+          color:
+            sf === "FACTURABLE"
+              ? "#166534"
+              : sf === "NON_FACTURABLE"
+              ? "#991b1b"
+              : "#92400e",
+        }}
+      >
+        {sf === "NON_FACTURABLE"
+          ? "NON FACTURABLE"
+          : sf === "FACTURABLE"
+          ? "FACTURABLE"
+          : sf === "A_VERIFIER"
+          ? "A VERIFIER"
+          : sf}
+      </span>
+
+      {motif && (
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            padding: "4px 8px",
+            borderRadius: "8px",
+            fontSize: "12px",
+            fontWeight: 500,
+            background: "#eef2f7",
+            color: "#374151",
+          }}
+        >
+          {motif}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -410,7 +493,6 @@ export default function DossiersList() {
             Afficher Dossiers
           </label>
 
-          {/* --- NOUVEAU: La checkbox Orange n'apparaît que si l'utilisateur est admin --- */}
           {canAccessOrange && (
             <label className="inline-flex items-center gap-2 text-sm border rounded px-3 py-2 bg-white cursor-pointer hover:bg-gray-50">
               <input
@@ -421,9 +503,7 @@ export default function DossiersList() {
               Afficher Orange
             </label>
           )}
-          {/* -------------------------------------------------------------------------- */}
 
-          {/* --- NOUVEAU: Bouton Administration (visible seulement pour admin) --- */}
           {canAccessOrange && (
             <button
               onClick={() => router.push("/admin")}
@@ -432,7 +512,6 @@ export default function DossiersList() {
               Administration
             </button>
           )}
-          {/* ------------------------------------------------------------------ */}
 
           <button onClick={() => load(filters)} disabled={loading} className="inline-flex items-center gap-2 px-3 py-2 rounded border bg-white hover:bg-gray-50 disabled:opacity-60">
             <RefreshCw className="h-4 w-4" /> Rafraîchir
@@ -504,11 +583,7 @@ export default function DossiersList() {
         )}
       </div>
 
-      {/* ════════════════════════════════════════════
-          ORANGE SECTION (composant séparé)
-      ════════════════════════════════════════════ */}
-
-      {/* --- NOUVEAU: La section Orange n'apparaît que si l'utilisateur est admin --- */}
+      {/* ORANGE SECTION */}
       {canAccessOrange && (
         <OrangeComparisonSection
           visible={showOrangeSection}
@@ -542,11 +617,8 @@ export default function DossiersList() {
           }}
         />
       )}
-      {/* -------------------------------------------------------------------------- */}
 
-      {/* ════════════════════════════════════════════
-          DOSSIERS SECTION
-      ════════════════════════════════════════════ */}
+      {/* DOSSIERS SECTION */}
       {showDossiersSection && (
         <div className="border rounded-lg overflow-auto bg-white mx-2">
           <div className="flex items-center justify-between px-3 py-2 border-b bg-gray-50">
@@ -562,14 +634,13 @@ export default function DossiersList() {
                 <th className="p-3">Règle</th><th className="p-3">Statut final</th><th className="p-3">Croisement</th>
                 <th className="p-3">Praxedo</th><th className="p-3">PIDI</th><th className="p-3">Palier</th>
                 <th className="p-3">Actions</th><th className="p-3">Planifiée</th><th className="p-3"></th>
-              </tr>
+               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
                 <tr><td colSpan={18} className="p-6 text-center text-gray-500">{loading ? "Chargement…" : "Aucun dossier à afficher."}</td></tr>
               ) : !grouped ? (
                 dossiersPageItems.map((d) => {
-                  const sf = d.statut_final ?? "NON_FACTURABLE";
                   const cro = d.statut_croisement ?? "INCONNU";
                   return (
                     <tr key={d.key_match} className="border-t hover:bg-gray-50/50 cursor-pointer" onClick={() => openDrawer(d)}>
@@ -583,15 +654,7 @@ export default function DossiersList() {
                       <td className="p-3">{d.code_cloture_code ? <Badge txt={d.code_cloture_code} kind={clotureKind(d.code_cloture_code)} /> : "—"}</td>
                       <td className="p-3">{d.mode_passage ? <Badge txt={d.mode_passage} kind={terrainKind(d.mode_passage)} /> : <span className="text-gray-500">—</span>}</td>
                       <td className="p-3"><div className="max-w-[520px] truncate" title={d.libelle_regle ?? ""}>{d.libelle_regle ?? "—"}</div></td>
-                      <td className="p-3">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <Badge txt={sf.replaceAll("_", " ")} kind={statutFinalKind(sf)} />
-                            {d.is_previsite && <Badge txt="Prévisite" kind="slate" />}
-                          </div>
-                          {sf === "A_VERIFIER" && d.motif_verification && <Badge txt={motifLabel(d.motif_verification)} kind={motifKind(d.motif_verification)} />}
-                        </div>
-                      </td>
+                      <td className="p-3"><StatusFinalCell dossier={d} /></td>
                       <td className="p-3"><Badge txt={cro.replaceAll("_", " ")} kind={croisementKind(cro)} /></td>
                       <td className="p-3">{d.statut_praxedo ? <Badge txt={d.statut_praxedo} kind={d.statut_praxedo.toLowerCase().includes("valid") ? "green" : "gray"} /> : "—"}</td>
                       <td className="p-3"><span className="text-purple-700 font-medium">{pidiLabel(d)}</span></td>
@@ -616,7 +679,6 @@ export default function DossiersList() {
                         <table className="min-w-[2000px] w-full text-sm">
                           <tbody>
                             {rows.map((d) => {
-                              const sf = d.statut_final ?? "NON_FACTURABLE";
                               const cro = d.statut_croisement ?? "INCONNU";
                               return (
                                 <tr key={d.key_match} className="border-b hover:bg-gray-50/50 cursor-pointer" onClick={() => openDrawer(d)}>
@@ -630,15 +692,7 @@ export default function DossiersList() {
                                   <td className="p-3 w-[110px]">{d.code_cloture_code ? <Badge txt={d.code_cloture_code} kind={clotureKind(d.code_cloture_code)} /> : "—"}</td>
                                   <td className="p-3 w-[120px]">{d.mode_passage ? <Badge txt={d.mode_passage} kind={terrainKind(d.mode_passage)} /> : <span className="text-gray-500">—</span>}</td>
                                   <td className="p-3 w-[520px]"><div className="max-w-[520px] truncate" title={d.libelle_regle ?? ""}>{d.libelle_regle ?? "—"}</div></td>
-                                  <td className="p-3 w-[220px]">
-                                    <div className="flex flex-col gap-1">
-                                      <div className="flex items-center gap-2">
-                                        <Badge txt={sf.replaceAll("_", " ")} kind={statutFinalKind(sf)} />
-                                        {d.is_previsite && <Badge txt="Prévisite" kind="slate" />}
-                                      </div>
-                                      {sf === "A_VERIFIER" && d.motif_verification && <Badge txt={motifLabel(d.motif_verification)} kind={motifKind(d.motif_verification)} />}
-                                    </div>
-                                  </td>
+                                  <td className="p-3 w-[220px]"><StatusFinalCell dossier={d} /></td>
                                   <td className="p-3 w-[140px]"><Badge txt={cro.replaceAll("_", " ")} kind={croisementKind(cro)} /></td>
                                   <td className="p-3 w-[140px]">{d.statut_praxedo ? <Badge txt={d.statut_praxedo} kind={d.statut_praxedo.toLowerCase().includes("valid") ? "green" : "gray"} /> : "—"}</td>
                                   <td className="p-3 w-[160px]"><span className="text-purple-700 font-medium">{pidiLabel(d)}</span></td>
@@ -661,9 +715,7 @@ export default function DossiersList() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════
-          DRAWER
-      ════════════════════════════════════════════ */}
+      {/* DRAWER */}
       {drawerOpen && selected && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/30" onClick={closeDrawer} />
@@ -842,7 +894,6 @@ export default function DossiersList() {
             load(filters);
 
             if (t === "ORANGE_PPD") {
-              // Forcer le rechargement de la section Orange
               sessionStorage.removeItem("kyntus_orange_data_state_v2");
             }
           }}
